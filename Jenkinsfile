@@ -2,75 +2,62 @@ pipeline {
     agent any
 
     environment {
-        CONTAINER_NAME = "nestjs-app"
-        IMAGE_NAME = "nesths-image"
         EMAIL = "sayyabashraf354@gmail.com"
         SERVER_IP = "13.60.249.253"
-        PORT = "3000"
     }
 
     stages {
 
-        stage('Clean Workspace') {
+        stage('Checkout') {
             steps {
-                echo 'Cleaning workspace...'
-                deleteDir()
+                checkout scm
             }
         }
 
-        stage('Clone Repo') {
+        stage('Clean Environment') {
             steps {
-                echo 'Cloning repository...'
-                git branch: 'main', url: 'https://github.com/sayyab2040/CI-CD-pipeline-Using-Jenkins-Github-Webhook-.git'
+                echo 'Stopping old containers...'
+                sh 'sudo docker compose down || true'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Application') {
             steps {
-                echo 'Building Docker Image...'
-                sh 'docker build -t $IMAGE_NAME .'
+                echo 'Building application using docker-compose...'
+                sh 'sudo docker compose build'
             }
         }
 
-        stage('Stop Old Container') {
+        stage('Deploy Application') {
             steps {
-                echo 'Stopping old container if exists...'
-                sh '''
-                docker stop $CONTAINER_NAME || true
-                docker rm $CONTAINER_NAME || true
-                '''
+                echo 'Starting application...'
+                sh 'sudo docker compose up -d'
             }
         }
 
-        stage('Run Docker Container') {
+        stage('Verify Deployment') {
             steps {
-                echo 'Running new container...'
-                sh '''
-                docker run -d -p $PORT:$PORT --name $CONTAINER_NAME $IMAGE_NAME
-                '''
+                echo 'Checking running containers...'
+                sh 'sudo docker ps'
             }
         }
     }
 
     post {
-
         success {
             emailext(
                 subject: "✅ Deployment Successful - ${env.JOB_NAME}",
                 body: """
-Your application has been deployed successfully 🚀
+Your three-tier application is deployed successfully 🚀
 
-Frontend URL:
+Frontend:
 http://${SERVER_IP}/
 
-Backend API:
-http://${SERVER_IP}:${PORT}/
+Backend:
+http://${SERVER_IP}:3000
 
-Build Details:
+Build Logs:
 ${env.BUILD_URL}
-
-Thank you,
-Jenkins CI/CD Pipeline
 """,
                 to: "${EMAIL}"
             )
@@ -80,11 +67,10 @@ Jenkins CI/CD Pipeline
             emailext(
                 subject: "❌ Deployment Failed - ${env.JOB_NAME}",
                 body: """
-Deployment failed ❌
+Deployment failed.
 
-Check logs here:
+Check logs:
 ${env.BUILD_URL}
-
 """,
                 to: "${EMAIL}"
             )
