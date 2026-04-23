@@ -7,7 +7,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
@@ -17,28 +16,28 @@ pipeline {
         stage('Clean Environment') {
             steps {
                 echo 'Stopping old containers...'
-                sh 'sudo docker compose down || true'
+                sh 'docker compose down || true'
             }
         }
 
         stage('Build Application') {
             steps {
                 echo 'Building application using docker-compose...'
-                sh 'sudo docker compose build'
+                sh 'docker compose build'
             }
         }
 
         stage('Deploy Application') {
             steps {
                 echo 'Starting application...'
-                sh 'sudo docker compose up -d'
+                sh 'docker compose up -d'
             }
         }
 
         stage('Verify Deployment') {
             steps {
                 echo 'Checking running containers...'
-                sh 'sudo docker ps'
+                sh 'docker ps'
             }
         }
     }
@@ -48,7 +47,7 @@ pipeline {
             emailext(
                 subject: "✅ Deployment Successful - ${env.JOB_NAME}",
                 body: """
-Your three-tier application is deployed successfully 🚀
+Your three-tier application is deployed successfully.
 
 Frontend:
 http://${SERVER_IP}/
