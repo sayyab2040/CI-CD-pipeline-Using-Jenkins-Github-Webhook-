@@ -5,10 +5,9 @@ const mysql = require('mysql2/promise');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors()); // Allow frontend to hit backend endpoints from different origin (e.g. port 80 vs 3000)
+app.use(cors());
 app.use(express.json());
 
-// Database connection config
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
@@ -21,26 +20,22 @@ let pool;
 async function setupDatabaseConnection() {
     console.log(`Attempting to connect to db at ${dbConfig.host}...`);
     pool = mysql.createPool(dbConfig);
-    
-    // Test the connection
+
     try {
         const connection = await pool.getConnection();
         console.log('Successfully connected to MySQL database!');
         connection.release();
     } catch (error) {
         console.error('Failed to connect to the database:', error.message);
-        // Sometimes docker-compose depends_on health isn't enough, can add retry logic here if needed
     }
 }
 
 setupDatabaseConnection();
 
-// Simple healthcheck route
 app.get('/', (req, res) => {
     res.send('Backend Running');
 });
 
-// Main POST API
 app.post('/api/message', async (req, res) => {
     const { name } = req.body;
 
@@ -49,14 +44,12 @@ app.post('/api/message', async (req, res) => {
     }
 
     try {
-        // Save to DB
         if (pool) {
             await pool.query('INSERT INTO users (name) VALUES (?)', [name.trim()]);
         } else {
             console.warn('DB not connected. Processing without saving.');
         }
 
-        // Return expected string
         res.send(`Hello ${name.trim()} from backend`);
     } catch (error) {
         console.error('Error inserting into DB:', error);
@@ -64,6 +57,6 @@ app.post('/api/message', async (req, res) => {
     }
 });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Backend server listening on port ${port}...`);
 });

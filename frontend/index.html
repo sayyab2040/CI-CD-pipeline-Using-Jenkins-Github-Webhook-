@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Three Tier Web App</title>
-    <!-- Use basic responsive modern CSS -->
     <style>
         :root {
             --primary-color: #4F46E5;
@@ -121,15 +120,13 @@
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('name').value;
-            
-            // clear previous styles
+
             responseContainer.className = '';
             responseContainer.textContent = 'Sending...';
             responseContainer.style.display = 'block';
 
             try {
-                // Assuming backend is running on localhost:3000 locally
-                const response = await fetch('http://localhost:3000/api/message', {
+                const response = await fetch(`${window.location.protocol}//${window.location.hostname}:3000/api/message`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
