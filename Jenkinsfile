@@ -29,10 +29,36 @@ pipeline {
 
     post {
         success {
-            echo 'Deployment successfully Deployed.'
+            emailext(
+                subject: "Jenkins Build Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+Build succeeded.
+
+Job: ${env.JOB_NAME}
+Build Number: ${env.BUILD_NUMBER}
+Build URL: ${env.BUILD_URL}
+
+Application URL:
+http://13.60.96.200:3000
+""",
+                to: 'sayyabashraf354@gmail.com'
+            )
         }
+
         failure {
-            echo 'Deployment failed. Please check the logs.'
+            emailext(
+                subject: "Jenkins Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+Build failed.
+
+Job: ${env.JOB_NAME}
+Build Number: ${env.BUILD_NUMBER}
+Build URL: ${env.BUILD_URL}
+
+Please check the Jenkins console output.
+""",
+                to: 'sayyabashraf354@gmail.com'
+            )
         }
     }
 }
