@@ -1,34 +1,55 @@
-post {
-    success {
-        emailext(
-            subject: "Jenkins Build Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-            body: """
-Build succeeded.
+pipeline {
+    agent any
 
-Job: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
-Build URL: ${env.BUILD_URL}
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
 
-Frontend URL:
-http://13.60.96.200
-""",
-            to: 'sayyabashraf354@gmail.com'
-        )
+        stage('Clean Environment') {
+            steps {
+                sh 'docker compose down || true'
+            }
+        }
+
+        stage('Build Image') {
+            steps {
+                sh 'docker compose build'
+            }
+        }
+
+        stage('Deploy Application') {
+            steps {
+                sh 'docker compose up -d'
+            }
+        }
     }
 
-    failure {
-        emailext(
-            subject: "Jenkins Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-            body: """
-Build failed.
+    post {
+        success {
+            emailext(
+                subject: "Build Success: ${env.JOB_NAME}",
+                body: """
+Deployment successful!
 
-Job: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
-Build URL: ${env.BUILD_URL}
+Frontend:
+http://13.60.96.200
 
-Please check Jenkins console output.
+Backend:
+http://13.60.96.200:3000
 """,
-            to: 'sayyabashraf354@gmail.com'
-        )
+                to: 'sayyabashraf354@gmail.com'
+            )
+        }
+
+        failure {
+            emailext(
+                subject: "Build Failed: ${env.JOB_NAME}",
+                body: "Check Jenkins logs: ${env.BUILD_URL}",
+                to: 'sayyabashraf354@gmail.com'
+            )
+        }
     }
 }
