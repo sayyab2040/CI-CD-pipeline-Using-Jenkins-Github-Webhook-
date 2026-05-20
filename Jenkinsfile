@@ -8,6 +8,7 @@ pipeline {
         JENKINS_URL = ''
         GRAFANA_URL = ''
         PROMETHEUS_URL = ''
+        SONARQUBE_URL = ''
     }
 
     stages {
@@ -31,6 +32,7 @@ pipeline {
                     env.JENKINS_URL = "http://${env.SERVER_IP}:8080"
                     env.GRAFANA_URL = "http://${env.SERVER_IP}:3000"
                     env.PROMETHEUS_URL = "http://${env.SERVER_IP}:9090"
+                    env.SONARQUBE_URL = "http://${env.SERVER_IP}:9000"
 
                     echo "Current EC2 Public IP is: ${env.SERVER_IP}"
                 }
@@ -83,6 +85,23 @@ pipeline {
             }
         }
 
+        stage('Code Quality Scan - SonarQube') {
+            steps {
+                echo "Running SonarQube code quality scan..."
+
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        docker run --rm \
+                        --network host \
+                        -e SONAR_HOST_URL="http://localhost:9000" \
+                        -e SONAR_TOKEN="$SONAR_TOKEN" \
+                        -v "$WORKSPACE:/usr/src" \
+                        sonarsource/sonar-scanner-cli
+                    '''
+                }
+            }
+        }
+
         stage('Clean Old App Containers') {
             steps {
                 dir('docker') {
@@ -109,21 +128,21 @@ pipeline {
                     mkdir -p security/reports
 
                     if command -v trivy >/dev/null 2>&1; then
-                        trivy image login-backend:latest \
+                        trivy image docker-backend:latest \
                         --severity HIGH,CRITICAL \
                         --format table \
                         --output security/reports/trivy-backend-image-report.txt || true
 
-                        trivy image nginx:alpine \
+                        trivy image docker-frontend:latest \
                         --severity HIGH,CRITICAL \
                         --format table \
-                        --output security/reports/trivy-frontend-base-report.txt || true
+                        --output security/reports/trivy-frontend-image-report.txt || true
 
                         echo "Backend image scan report:"
                         cat security/reports/trivy-backend-image-report.txt || true
 
-                        echo "Frontend base image scan report:"
-                        cat security/reports/trivy-frontend-base-report.txt || true
+                        echo "Frontend image scan report:"
+                        cat security/reports/trivy-frontend-image-report.txt || true
                     else
                         echo "Trivy is not installed. Skipping Docker image scan."
                     fi
@@ -159,18 +178,19 @@ pipeline {
             }
         }
 
-        stage('Verify Monitoring Services') {
+        stage('Verify Monitoring and Security Services') {
             steps {
-                echo "Checking EC2 installed monitoring services..."
+                echo "Checking EC2 installed monitoring and security services..."
 
                 sh 'systemctl is-active prometheus || true'
                 sh 'systemctl is-active grafana-server || true'
                 sh 'systemctl is-active node_exporter || true'
 
-                echo "Checking Prometheus and Grafana ports..."
+                echo "Checking Prometheus, Grafana, Node Exporter and SonarQube ports..."
                 sh '''
                     curl -I http://localhost:9090 || true
                     curl -I http://localhost:3000 || true
+                    curl -I http://localhost:9000 || true
                     curl -s http://localhost:9100/metrics | head || true
                 '''
             }
@@ -211,8 +231,11 @@ ${env.GRAFANA_URL}
 Prometheus:
 ${env.PROMETHEUS_URL}
 
+SonarQube:
+${env.SONARQUBE_URL}
+
 Security:
-Trivy filesystem and Docker image scan stages executed.
+Trivy filesystem scan, Trivy Docker image scan, and SonarQube code quality scan stages executed.
 Security reports are archived in Jenkins build artifacts.
 
 Build Logs:
